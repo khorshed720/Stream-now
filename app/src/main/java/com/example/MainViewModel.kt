@@ -160,7 +160,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                 val bId = broadcast.id
                 if (bId != null && thumbnailBytes != null) {
-                    youtubeRepo.setThumbnail(token, bId, thumbnailBytes!!)
+                    try {
+                        val bitmap = android.graphics.BitmapFactory.decodeByteArray(thumbnailBytes, 0, thumbnailBytes!!.size)
+                        if (bitmap != null) {
+                            val stream = java.io.ByteArrayOutputStream()
+                            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, stream)
+                            var compressedBytes = stream.toByteArray()
+                            
+                            // Scale down if still too large (YouTube limit is 2MB, let's keep it under 1.5MB to be safe)
+                            var scale = 0.9f
+                            var quality = 80
+                            var scaledBitmap = bitmap
+                            while (compressedBytes.size > 1.5 * 1024 * 1024 && quality > 20) {
+                                quality -= 10
+                                val w = (scaledBitmap.width * scale).toInt()
+                                val h = (scaledBitmap.height * scale).toInt()
+                                val newBitmap = android.graphics.Bitmap.createScaledBitmap(scaledBitmap, w, h, true)
+                                if (scaledBitmap != bitmap) scaledBitmap.recycle()
+                                scaledBitmap = newBitmap
+                                
+                                val tempStream = java.io.ByteArrayOutputStream()
+                                scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, quality, tempStream)
+                                compressedBytes = tempStream.toByteArray()
+                            }
+                            youtubeRepo.setThumbnail(token, bId, compressedBytes)
+                            if (scaledBitmap != bitmap) scaledBitmap.recycle()
+                            bitmap.recycle()
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 }
 
                 // 3. Start Service to capture screen and push to RTMP

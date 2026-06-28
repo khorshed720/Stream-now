@@ -21,6 +21,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.delay
 
+import com.pedro.encoder.input.gl.render.filters.`object`.ImageObjectFilterRender
+import com.pedro.encoder.input.gl.render.filters.NoFilterRender
+import android.graphics.BitmapFactory
+
 class StreamService : Service(), ConnectChecker {
 
     inner class StreamBinder : Binder() {
@@ -120,6 +124,15 @@ class StreamService : Service(), ConnectChecker {
 
                     if (audioPrepared) {
                         rtmpDisplay.startStream(rtmpUrl)
+                        
+                        if (!overlayManager.isMicOn) {
+                            rtmpDisplay.disableAudio()
+                        }
+                        
+                        // If banner was toggled on before starting, apply it now
+                        if (overlayManager.isBannerOn) {
+                            overlayManager.onBannerToggled?.invoke(true)
+                        }
                     } else {
                         overlayManager.updateStatus("Audio error")
                     }
@@ -158,24 +171,72 @@ class StreamService : Service(), ConnectChecker {
 
         overlayManager.onBannerToggled = { isOn ->
             isBannerActive = isOn
-            val bytes = ServiceLocator.bannerBytes
+            var bytes = ServiceLocator.bannerBytes
             bannerJob?.cancel()
             bannerJob = null
-            if (isOn && bytes != null) {
+            if (isOn) {
+                if (bytes == null) {
+                    // Generate a default banner bitmap if none provided
+                    val width = 800
+                    val height = 200
+                    val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+                    val canvas = android.graphics.Canvas(bitmap)
+                    val paint = android.graphics.Paint().apply {
+                        color = android.graphics.Color.parseColor("#88000000") // Semi-transparent black
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+                    paint.apply {
+                        color = android.graphics.Color.WHITE
+                        textSize = 60f
+                        textAlign = android.graphics.Paint.Align.CENTER
+                    }
+                    canvas.drawText("SUBSCRIBE!", width / 2f, height / 2f + 20f, paint)
+                    
+                    val stream = java.io.ByteArrayOutputStream()
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
+                    bytes = stream.toByteArray()
+                }
+                
                 bannerJob = scope.launch(Dispatchers.Main) {
                     val intervalMillis = (ServiceLocator.bannerInterval * 1000).toLong()
                     while (isActive) {
-                        overlayManager.showBanner(bytes)
+                        try {
+                            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes!!.size)
+                            if (bitmap != null) {
+                                val filter = ImageObjectFilterRender()
+                                filter.setImage(bitmap)
+                                filter.setScale(100f, 15f) // 100% width, 15% height
+                                filter.setPosition(0f, 85f) // Bottom of screen (85% down)
+                                rtmpDisplay.glInterface?.setFilter(filter)
+                            }
+                        } catch (e: Exception) {
+                            Log.e("StreamService", "Failed to set banner filter", e)
+                        }
+                        
                         delay(5000) // Show for 5 seconds
-                        overlayManager.hideBanner()
+                        
+                        // Hide it
+                        try {
+                            rtmpDisplay.glInterface?.setFilter(NoFilterRender())
+                        } catch (e: Exception) {}
+                        
                         delay(intervalMillis)
                     }
                 }
             } else {
                 scope.launch(Dispatchers.Main) {
-                    overlayManager.hideBanner()
+                    try {
+                        rtmpDisplay.glInterface?.setFilter(NoFilterRender())
+                    } catch (e: Exception) {}
                 }
             }
+        }
+
+        overlayManager.onSettingsClicked = {
+            val i = Intent(this@StreamService, com.example.MainActivity::class.java)
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            startActivity(i)
         }
 
         overlayManager.showOverlay()

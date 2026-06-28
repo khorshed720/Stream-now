@@ -59,6 +59,10 @@ class YouTubeRepository {
                 privacyStatus = privacyStatus.lowercase()
             ),
             contentDetails = BroadcastContentDetails(
+                monitorStream = MonitorStreamInfo(
+                    enableMonitorStream = true,
+                    broadcastStreamDelayMs = 0
+                ),
                 enableAutoStart = true,
                 enableAutoStop = true
             )

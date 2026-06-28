@@ -15,6 +15,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -276,61 +277,6 @@ fun MainScreen(
                     var bannerIntervalStr by remember { mutableStateOf(viewModel.bannerInterval.toString()) }
 
                     Column(modifier = Modifier.fillMaxWidth().verticalScroll(androidx.compose.foundation.rememberScrollState())) {
-                        Text("Stream Setup", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = 16.dp))
-                        
-                        OutlinedTextField(
-                            value = title,
-                            onValueChange = { title = it; viewModel.streamTitle = it },
-                            label = { Text("Title") },
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-                        )
-                        OutlinedTextField(
-                            value = description,
-                            onValueChange = { description = it; viewModel.streamDescription = it },
-                            label = { Text("Description") },
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                            minLines = 3
-                        )
-                        
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
-                            Checkbox(checked = isForKids, onCheckedChange = { isForKids = it; viewModel.isForKids = it })
-                            Text("Yes, it's made for kids")
-                        }
-
-                        // Privacy Status Dropdown
-                        Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                            Button(onClick = { expandedPrivacy = true }, modifier = Modifier.fillMaxWidth()) {
-                                Text("Privacy: $privacyStatus")
-                            }
-                            DropdownMenu(
-                                expanded = expandedPrivacy,
-                                onDismissRequest = { expandedPrivacy = false }
-                            ) {
-                                DropdownMenuItem(text = { Text("Public") }, onClick = { privacyStatus = "Public"; viewModel.privacyStatus = "Public"; expandedPrivacy = false })
-                                DropdownMenuItem(text = { Text("Unlisted") }, onClick = { privacyStatus = "Unlisted"; viewModel.privacyStatus = "Unlisted"; expandedPrivacy = false })
-                                DropdownMenuItem(text = { Text("Private") }, onClick = { privacyStatus = "Private"; viewModel.privacyStatus = "Private"; expandedPrivacy = false })
-                            }
-                        }
-
-                        // Resolution Dropdown
-                        Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                            Button(onClick = { expandedResolution = true }, modifier = Modifier.fillMaxWidth()) {
-                                Text("Quality: $resolution")
-                            }
-                            DropdownMenu(
-                                expanded = expandedResolution,
-                                onDismissRequest = { expandedResolution = false }
-                            ) {
-                                DropdownMenuItem(text = { Text("1080p") }, onClick = { resolution = "1080p"; viewModel.resolution = "1080p"; expandedResolution = false })
-                                DropdownMenuItem(text = { Text("720p") }, onClick = { resolution = "720p"; viewModel.resolution = "720p"; expandedResolution = false })
-                                DropdownMenuItem(text = { Text("480p") }, onClick = { resolution = "480p"; viewModel.resolution = "480p"; expandedResolution = false })
-                            }
-                        }
-
-                        // Scheduling
-                        var isScheduled by remember { mutableStateOf(viewModel.isScheduled) }
-                        var scheduledTime by remember { mutableStateOf(viewModel.scheduledTime) }
-                        
                         val context = androidx.compose.ui.platform.LocalContext.current
                         var hasThumbnail by remember { mutableStateOf(viewModel.thumbnailBytes != null) }
                         var hasBanner by remember { mutableStateOf(viewModel.bannerBytes != null) }
@@ -352,53 +298,151 @@ fun MainScreen(
                                 }
                             }
                         }
-
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
-                            Checkbox(checked = isScheduled, onCheckedChange = { isScheduled = it; viewModel.isScheduled = it })
-                            Text("Schedule for later")
-                        }
                         
-                        if (isScheduled) {
-                            OutlinedTextField(
-                                value = scheduledTime,
-                                onValueChange = { scheduledTime = it; viewModel.scheduledTime = it },
-                                label = { Text("Time (YYYY-MM-DDTHH:mm:ssZ)") },
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                                placeholder = { Text("2026-12-31T15:00:00Z") }
-                            )
-                        }
-
-                        // Thumbnail
-                        Button(onClick = { thumbnailPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                            Text(if (hasThumbnail) "Thumbnail Selected" else "Select Thumbnail")
-                        }
+                        Text("Stream Settings", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(bottom = 24.dp))
                         
-                        // Audio Source Dropdown
-                        Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                            Button(onClick = { expandedAudio = true }, modifier = Modifier.fillMaxWidth()) {
-                                Text("Audio Source: $audioSource")
-                            }
-                            DropdownMenu(
-                                expanded = expandedAudio,
-                                onDismissRequest = { expandedAudio = false }
-                            ) {
-                                DropdownMenuItem(text = { Text("Internal") }, onClick = { audioSource = "Internal"; viewModel.audioSource = "Internal"; expandedAudio = false })
-                                DropdownMenuItem(text = { Text("Mic") }, onClick = { audioSource = "Mic"; viewModel.audioSource = "Mic"; expandedAudio = false })
-                                DropdownMenuItem(text = { Text("Internal + Mic") }, onClick = { audioSource = "Internal + Mic"; viewModel.audioSource = "Internal + Mic"; expandedAudio = false })
+                        Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("Basic Info", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp), color = MaterialTheme.colorScheme.primary)
+                                OutlinedTextField(
+                                    value = title,
+                                    onValueChange = { title = it; viewModel.streamTitle = it },
+                                    label = { Text("Stream Title") },
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                                )
+                                OutlinedTextField(
+                                    value = description,
+                                    onValueChange = { description = it; viewModel.streamDescription = it },
+                                    label = { Text("Description") },
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                                    minLines = 3
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Checkbox(checked = isForKids, onCheckedChange = { isForKids = it; viewModel.isForKids = it })
+                                    Text("Made for kids", style = MaterialTheme.typography.bodyMedium)
+                                }
                             }
                         }
 
-                        // Banner Settings
-                        Button(onClick = { bannerPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                            Text(if (hasBanner) "Banner Selected" else "Upload Banner")
+                        Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("Visibility & Quality", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp), color = MaterialTheme.colorScheme.primary)
+                                
+                                // Privacy Status Dropdown
+                                Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                                    Button(onClick = { expandedPrivacy = true }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.filledTonalButtonColors()) {
+                                        Text("Privacy: $privacyStatus")
+                                    }
+                                    DropdownMenu(
+                                        expanded = expandedPrivacy,
+                                        onDismissRequest = { expandedPrivacy = false }
+                                    ) {
+                                        DropdownMenuItem(text = { Text("Public") }, onClick = { privacyStatus = "Public"; viewModel.privacyStatus = "Public"; expandedPrivacy = false })
+                                        DropdownMenuItem(text = { Text("Unlisted") }, onClick = { privacyStatus = "Unlisted"; viewModel.privacyStatus = "Unlisted"; expandedPrivacy = false })
+                                        DropdownMenuItem(text = { Text("Private") }, onClick = { privacyStatus = "Private"; viewModel.privacyStatus = "Private"; expandedPrivacy = false })
+                                    }
+                                }
+
+                                // Resolution Dropdown
+                                Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                                    Button(onClick = { expandedResolution = true }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.filledTonalButtonColors()) {
+                                        Text("Quality: $resolution")
+                                    }
+                                    DropdownMenu(
+                                        expanded = expandedResolution,
+                                        onDismissRequest = { expandedResolution = false }
+                                    ) {
+                                        DropdownMenuItem(text = { Text("1080p") }, onClick = { resolution = "1080p"; viewModel.resolution = "1080p"; expandedResolution = false })
+                                        DropdownMenuItem(text = { Text("720p") }, onClick = { resolution = "720p"; viewModel.resolution = "720p"; expandedResolution = false })
+                                        DropdownMenuItem(text = { Text("480p") }, onClick = { resolution = "480p"; viewModel.resolution = "480p"; expandedResolution = false })
+                                    }
+                                }
+                                
+                                // Audio Source Dropdown
+                                Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                                    Button(onClick = { expandedAudio = true }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.filledTonalButtonColors()) {
+                                        Text("Audio Source: $audioSource")
+                                    }
+                                    DropdownMenu(
+                                        expanded = expandedAudio,
+                                        onDismissRequest = { expandedAudio = false }
+                                    ) {
+                                        DropdownMenuItem(text = { Text("Internal") }, onClick = { audioSource = "Internal"; viewModel.audioSource = "Internal"; expandedAudio = false })
+                                        DropdownMenuItem(text = { Text("Mic") }, onClick = { audioSource = "Mic"; viewModel.audioSource = "Mic"; expandedAudio = false })
+                                        DropdownMenuItem(text = { Text("Internal + Mic") }, onClick = { audioSource = "Internal + Mic"; viewModel.audioSource = "Internal + Mic"; expandedAudio = false })
+                                    }
+                                }
+                            }
                         }
-                        OutlinedTextField(
-                            value = bannerIntervalStr,
-                            onValueChange = { bannerIntervalStr = it; viewModel.bannerInterval = it.toIntOrNull() ?: 10 },
-                            label = { Text("Banner Interval (seconds)") },
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
-                        )
+
+                        // Scheduling
+                        Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("Scheduling", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp), color = MaterialTheme.colorScheme.primary)
+                                var isScheduled by remember { mutableStateOf(viewModel.isScheduled) }
+                                var scheduledTime by remember { mutableStateOf(viewModel.scheduledTime) }
+
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+                                    Checkbox(checked = isScheduled, onCheckedChange = { isScheduled = it; viewModel.isScheduled = it })
+                                    Text("Schedule for later")
+                                }
+                                
+                                if (isScheduled) {
+                                    OutlinedTextField(
+                                        value = scheduledTime,
+                                        onValueChange = { scheduledTime = it; viewModel.scheduledTime = it },
+                                        label = { Text("Time (YYYY-MM-DDTHH:mm:ssZ)") },
+                                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                        placeholder = { Text("2026-12-31T15:00:00Z") }
+                                    )
+                                }
+                            }
+                        }
+
+                        Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("Visuals & Overlays", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp), color = MaterialTheme.colorScheme.primary)
+                                
+                                // Thumbnail
+                                if (hasThumbnail && viewModel.thumbnailBytes != null) {
+                                    val bitmap = android.graphics.BitmapFactory.decodeByteArray(viewModel.thumbnailBytes, 0, viewModel.thumbnailBytes!!.size)
+                                    if (bitmap != null) {
+                                        androidx.compose.foundation.Image(
+                                            bitmap = bitmap.asImageBitmap(),
+                                            contentDescription = "Thumbnail Preview",
+                                            modifier = Modifier.fillMaxWidth().height(150.dp).padding(bottom = 8.dp),
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                                        )
+                                    }
+                                }
+                                Button(onClick = { thumbnailPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), colors = ButtonDefaults.outlinedButtonColors(), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)) {
+                                    Text(if (hasThumbnail) "Change Thumbnail" else "Select Thumbnail")
+                                }
+
+                                // Banner Settings
+                                if (hasBanner && viewModel.bannerBytes != null) {
+                                    val bitmap = android.graphics.BitmapFactory.decodeByteArray(viewModel.bannerBytes, 0, viewModel.bannerBytes!!.size)
+                                    if (bitmap != null) {
+                                        androidx.compose.foundation.Image(
+                                            bitmap = bitmap.asImageBitmap(),
+                                            contentDescription = "Banner Preview",
+                                            modifier = Modifier.fillMaxWidth().height(100.dp).padding(bottom = 8.dp),
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                                        )
+                                    }
+                                }
+                                Button(onClick = { bannerPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), colors = ButtonDefaults.outlinedButtonColors(), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)) {
+                                    Text(if (hasBanner) "Change Banner" else "Upload Banner Overlay")
+                                }
+                                OutlinedTextField(
+                                    value = bannerIntervalStr,
+                                    onValueChange = { bannerIntervalStr = it; viewModel.bannerInterval = it.toIntOrNull() ?: 10 },
+                                    label = { Text("Banner Interval (seconds)") },
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                                )
+                            }
+                        }
                         
                         Button(
                             onClick = onConfirmSetupClick,
