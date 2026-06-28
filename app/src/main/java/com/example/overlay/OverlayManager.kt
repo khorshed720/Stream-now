@@ -19,6 +19,7 @@ class OverlayManager(private val context: Context) {
 
     private var windowManager: WindowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private var overlayView: View? = null
+    private var bannerView: View? = null
     
     // UI state flows
     private val _streamState = MutableStateFlow("Offline")
@@ -66,6 +67,17 @@ class OverlayManager(private val context: Context) {
         val btnBanner = overlayView?.findViewById<Button>(R.id.btnBanner)
         val btnSettings = overlayView?.findViewById<Button>(R.id.btnSettings)
         val tvStatus = overlayView?.findViewById<TextView>(R.id.tvStatus)
+
+        val btnToggle = overlayView?.findViewById<View>(R.id.btnToggle)
+        val controlPanel = overlayView?.findViewById<View>(R.id.controlPanel)
+        
+        btnToggle?.setOnClickListener {
+            if (controlPanel?.visibility == View.VISIBLE) {
+                controlPanel.visibility = View.GONE
+            } else {
+                controlPanel?.visibility = View.VISIBLE
+            }
+        }
 
         btnStart?.setOnClickListener { onStartClicked?.invoke() }
         btnStop?.setOnClickListener { onStopClicked?.invoke() }
@@ -118,6 +130,48 @@ class OverlayManager(private val context: Context) {
         if (overlayView != null) {
             windowManager.removeView(overlayView)
             overlayView = null
+        }
+        hideBanner()
+    }
+    
+    fun showBanner(imageBytes: ByteArray) {
+        if (bannerView == null) {
+            val params = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                } else {
+                    WindowManager.LayoutParams.TYPE_PHONE
+                },
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                PixelFormat.TRANSLUCENT
+            )
+            params.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+            
+            // DO NOT set FLAG_SECURE because we WANT the banner to be captured in the stream
+            
+            val imageView = android.widget.ImageView(context)
+            imageView.adjustViewBounds = true
+            imageView.scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+            
+            try {
+                val bitmap = android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                if (bitmap != null) {
+                    imageView.setImageBitmap(bitmap)
+                    bannerView = imageView
+                    windowManager.addView(bannerView, params)
+                }
+            } catch (e: Exception) {
+                // Handle decode error
+            }
+        }
+    }
+    
+    fun hideBanner() {
+        if (bannerView != null) {
+            windowManager.removeView(bannerView)
+            bannerView = null
         }
     }
 }

@@ -1,6 +1,8 @@
 package com.example.api
 
 import kotlinx.coroutines.delay
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -34,14 +36,17 @@ class YouTubeRepository {
     suspend fun createAndBindBroadcast(
         token: String,
         title: String,
-        description: String
+        description: String,
+        privacyStatus: String,
+        resolution: String,
+        scheduledStartTime: String? = null
     ): Pair<LiveBroadcast, LiveStream> {
         val authHeader = "Bearer $token"
 
         val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
         }
-        val startTime = dateFormat.format(Date())
+        val startTime = scheduledStartTime ?: dateFormat.format(Date())
 
         // 1. Create Broadcast
         val broadcast = LiveBroadcast(
@@ -51,7 +56,11 @@ class YouTubeRepository {
                 scheduledStartTime = startTime
             ),
             status = BroadcastStatus(
-                privacyStatus = "unlisted"
+                privacyStatus = privacyStatus.lowercase()
+            ),
+            contentDetails = BroadcastContentDetails(
+                enableAutoStart = true,
+                enableAutoStop = true
             )
         )
         val createdBroadcast = api.createBroadcast(authHeader, broadcast = broadcast)
@@ -62,8 +71,8 @@ class YouTubeRepository {
             snippet = StreamSnippet(title = title),
             cdn = CdnSettings(
                 ingestionType = "rtmp",
-                resolution = "1080p",
-                frameRate = "60fps"
+                resolution = resolution,
+                frameRate = "60fps" // keeping 60fps as standard for gaming
             )
         )
         val createdStream = api.createStream(authHeader, stream = stream)
@@ -120,6 +129,17 @@ class YouTubeRepository {
             api.transitionBroadcast(authHeader, status = "complete", broadcastId = broadcastId)
         } catch (e: Exception) {
             // Ignore errors on complete
+        }
+    }
+
+    suspend fun setThumbnail(token: String, videoId: String, imageBytes: ByteArray) {
+        val authHeader = "Bearer $token"
+        try {
+            val mediaType = "image/jpeg".toMediaTypeOrNull()
+            val requestBody = imageBytes.toRequestBody(mediaType)
+            api.setThumbnail(authHeader, videoId = videoId, body = requestBody)
+        } catch (e: Exception) {
+            // Ignore errors for thumbnail upload
         }
     }
 }

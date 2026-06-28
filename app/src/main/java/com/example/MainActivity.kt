@@ -14,6 +14,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -62,8 +64,6 @@ class MainActivity : ComponentActivity() {
     private val mediaProjectionLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
             viewModel.startLiveStream(
-                title = "Android Gameplay Live",
-                description = "Streaming directly from my Android phone using Streamer Controller!",
                 mediaProjectionResultCode = result.resultCode,
                 mediaProjectionData = result.data!!
             )
@@ -86,6 +86,9 @@ class MainActivity : ComponentActivity() {
                             signInLauncher.launch(intent)
                         },
                         onStartStreamClick = {
+                            viewModel.enterStreamSetup()
+                        },
+                        onConfirmSetupClick = {
                             checkPermissionsAndStart()
                         }
                     )
@@ -127,7 +130,8 @@ fun MainScreen(
     modifier: Modifier = Modifier,
     viewModel: MainViewModel,
     onSignInClick: () -> Unit,
-    onStartStreamClick: () -> Unit
+    onStartStreamClick: () -> Unit,
+    onConfirmSetupClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -236,7 +240,7 @@ fun MainScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.PlayArrow,
-                                    contentDescription = "Start Stream",
+                                    contentDescription = "Setup Stream",
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
@@ -247,12 +251,162 @@ fun MainScreen(
                             }
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "This will prompt for screen capture and overlay permissions.",
+                                text = "Set title, description, and streaming preferences.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
+                    }
+                }
+                is UiState.StreamSetup -> {
+                    var title by remember { mutableStateOf(viewModel.streamTitle) }
+                    var description by remember { mutableStateOf(viewModel.streamDescription) }
+                    var isForKids by remember { mutableStateOf(viewModel.isForKids) }
+                    
+                    var expandedAudio by remember { mutableStateOf(false) }
+                    var audioSource by remember { mutableStateOf(viewModel.audioSource) }
+
+                    var expandedPrivacy by remember { mutableStateOf(false) }
+                    var privacyStatus by remember { mutableStateOf(viewModel.privacyStatus) }
+
+                    var expandedResolution by remember { mutableStateOf(false) }
+                    var resolution by remember { mutableStateOf(viewModel.resolution) }
+
+                    var bannerIntervalStr by remember { mutableStateOf(viewModel.bannerInterval.toString()) }
+
+                    Column(modifier = Modifier.fillMaxWidth().verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                        Text("Stream Setup", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = 16.dp))
+                        
+                        OutlinedTextField(
+                            value = title,
+                            onValueChange = { title = it; viewModel.streamTitle = it },
+                            label = { Text("Title") },
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                        )
+                        OutlinedTextField(
+                            value = description,
+                            onValueChange = { description = it; viewModel.streamDescription = it },
+                            label = { Text("Description") },
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            minLines = 3
+                        )
+                        
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+                            Checkbox(checked = isForKids, onCheckedChange = { isForKids = it; viewModel.isForKids = it })
+                            Text("Yes, it's made for kids")
+                        }
+
+                        // Privacy Status Dropdown
+                        Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                            Button(onClick = { expandedPrivacy = true }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Privacy: $privacyStatus")
+                            }
+                            DropdownMenu(
+                                expanded = expandedPrivacy,
+                                onDismissRequest = { expandedPrivacy = false }
+                            ) {
+                                DropdownMenuItem(text = { Text("Public") }, onClick = { privacyStatus = "Public"; viewModel.privacyStatus = "Public"; expandedPrivacy = false })
+                                DropdownMenuItem(text = { Text("Unlisted") }, onClick = { privacyStatus = "Unlisted"; viewModel.privacyStatus = "Unlisted"; expandedPrivacy = false })
+                                DropdownMenuItem(text = { Text("Private") }, onClick = { privacyStatus = "Private"; viewModel.privacyStatus = "Private"; expandedPrivacy = false })
+                            }
+                        }
+
+                        // Resolution Dropdown
+                        Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                            Button(onClick = { expandedResolution = true }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Quality: $resolution")
+                            }
+                            DropdownMenu(
+                                expanded = expandedResolution,
+                                onDismissRequest = { expandedResolution = false }
+                            ) {
+                                DropdownMenuItem(text = { Text("1080p") }, onClick = { resolution = "1080p"; viewModel.resolution = "1080p"; expandedResolution = false })
+                                DropdownMenuItem(text = { Text("720p") }, onClick = { resolution = "720p"; viewModel.resolution = "720p"; expandedResolution = false })
+                                DropdownMenuItem(text = { Text("480p") }, onClick = { resolution = "480p"; viewModel.resolution = "480p"; expandedResolution = false })
+                            }
+                        }
+
+                        // Scheduling
+                        var isScheduled by remember { mutableStateOf(viewModel.isScheduled) }
+                        var scheduledTime by remember { mutableStateOf(viewModel.scheduledTime) }
+                        
+                        val context = androidx.compose.ui.platform.LocalContext.current
+                        var hasThumbnail by remember { mutableStateOf(viewModel.thumbnailBytes != null) }
+                        var hasBanner by remember { mutableStateOf(viewModel.bannerBytes != null) }
+                        
+                        val thumbnailPicker = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri ->
+                            uri?.let {
+                                context.contentResolver.openInputStream(it)?.use { inputStream ->
+                                    viewModel.thumbnailBytes = inputStream.readBytes()
+                                    hasThumbnail = true
+                                }
+                            }
+                        }
+                        
+                        val bannerPicker = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri ->
+                            uri?.let {
+                                context.contentResolver.openInputStream(it)?.use { inputStream ->
+                                    viewModel.bannerBytes = inputStream.readBytes()
+                                    hasBanner = true
+                                }
+                            }
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+                            Checkbox(checked = isScheduled, onCheckedChange = { isScheduled = it; viewModel.isScheduled = it })
+                            Text("Schedule for later")
+                        }
+                        
+                        if (isScheduled) {
+                            OutlinedTextField(
+                                value = scheduledTime,
+                                onValueChange = { scheduledTime = it; viewModel.scheduledTime = it },
+                                label = { Text("Time (YYYY-MM-DDTHH:mm:ssZ)") },
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                placeholder = { Text("2026-12-31T15:00:00Z") }
+                            )
+                        }
+
+                        // Thumbnail
+                        Button(onClick = { thumbnailPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                            Text(if (hasThumbnail) "Thumbnail Selected" else "Select Thumbnail")
+                        }
+                        
+                        // Audio Source Dropdown
+                        Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                            Button(onClick = { expandedAudio = true }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Audio Source: $audioSource")
+                            }
+                            DropdownMenu(
+                                expanded = expandedAudio,
+                                onDismissRequest = { expandedAudio = false }
+                            ) {
+                                DropdownMenuItem(text = { Text("Internal") }, onClick = { audioSource = "Internal"; viewModel.audioSource = "Internal"; expandedAudio = false })
+                                DropdownMenuItem(text = { Text("Mic") }, onClick = { audioSource = "Mic"; viewModel.audioSource = "Mic"; expandedAudio = false })
+                                DropdownMenuItem(text = { Text("Internal + Mic") }, onClick = { audioSource = "Internal + Mic"; viewModel.audioSource = "Internal + Mic"; expandedAudio = false })
+                            }
+                        }
+
+                        // Banner Settings
+                        Button(onClick = { bannerPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                            Text(if (hasBanner) "Banner Selected" else "Upload Banner")
+                        }
+                        OutlinedTextField(
+                            value = bannerIntervalStr,
+                            onValueChange = { bannerIntervalStr = it; viewModel.bannerInterval = it.toIntOrNull() ?: 10 },
+                            label = { Text("Banner Interval (seconds)") },
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                        )
+                        
+                        Button(
+                            onClick = onConfirmSetupClick,
+                            modifier = Modifier.fillMaxWidth().height(56.dp)
+                        ) {
+                            Text("Go Live")
+                        }
+                        Spacer(modifier = Modifier.height(32.dp))
                     }
                 }
                 is UiState.StartingStream -> {

@@ -45,4 +45,11 @@ interface YouTubeApi {
         @Query("part") part: String = "status",
         @Query("id") streamId: String
     ): LiveStreamListResponse
+    @POST("upload/youtube/v3/thumbnails/set")
+    suspend fun setThumbnail(
+        @Header("Authorization") authHeader: String,
+        @Query("videoId") videoId: String,
+        @Header("Content-Type") contentType: String = "image/jpeg",
+        @Body body: okhttp3.RequestBody
+    ): okhttp3.ResponseBody
 }

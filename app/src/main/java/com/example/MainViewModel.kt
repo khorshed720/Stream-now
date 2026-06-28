@@ -111,9 +111,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun enterStreamSetup() {
+        if (googleAccount != null) {
+            _uiState.value = UiState.StreamSetup
+        }
+    }
+
+    var streamTitle: String = "Android Gameplay Live"
+    var streamDescription: String = "Streaming directly from my Android phone using Streamer Controller!"
+    var isForKids: Boolean = false
+    var privacyStatus: String = "Public"
+    var resolution: String = "1080p"
+    var isScheduled: Boolean = false
+    var scheduledTime: String = "" // e.g., "2026-10-31T15:00:00Z"
+    var audioSource: String = "Internal"
+    var bannerUrl: String = ""
+    var bannerInterval: Int = 10
+    var thumbnailBytes: ByteArray? = null
+    var bannerBytes: ByteArray? = null
+
     fun startLiveStream(
-        title: String,
-        description: String,
         mediaProjectionResultCode: Int,
         mediaProjectionData: Intent
     ) {
@@ -130,9 +147,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
 
                 // 2. Create Broadcast & Stream
-                val (broadcast, stream) = youtubeRepo.createAndBindBroadcast(token, title, description)
+                val (broadcast, stream) = youtubeRepo.createAndBindBroadcast(
+                    token = token,
+                    title = streamTitle,
+                    description = streamDescription,
+                    privacyStatus = privacyStatus,
+                    resolution = resolution,
+                    scheduledStartTime = if (isScheduled && scheduledTime.isNotEmpty()) scheduledTime else null
+                )
                 val streamId = stream.id ?: throw Exception("Invalid stream ID")
                 val rtmpUrl = stream.cdn?.ingestionInfo?.ingestionAddress + "/" + stream.cdn?.ingestionInfo?.streamName
+
+                val bId = broadcast.id
+                if (bId != null && thumbnailBytes != null) {
+                    youtubeRepo.setThumbnail(token, bId, thumbnailBytes!!)
+                }
 
                 // 3. Start Service to capture screen and push to RTMP
                 withContext(Dispatchers.Main) {
@@ -152,6 +181,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     com.example.capture.ServiceLocator.data = mediaProjectionData
                     com.example.capture.ServiceLocator.youtubeToken = token
                     com.example.capture.ServiceLocator.broadcastId = broadcast.id
+                    com.example.capture.ServiceLocator.resolution = resolution
+                    com.example.capture.ServiceLocator.audioSource = audioSource
+                    com.example.capture.ServiceLocator.bannerBytes = bannerBytes
+                    com.example.capture.ServiceLocator.bannerInterval = bannerInterval
                 }
 
                 _uiState.value = UiState.StreamReady(rtmpUrl)
@@ -179,6 +212,7 @@ sealed class UiState {
     object Loading : UiState()
     object Unauthenticated : UiState()
     data class Authenticated(val account: GoogleSignInAccount) : UiState()
+    object StreamSetup : UiState()
     object StartingStream : UiState()
     data class StreamReady(val rtmpUrl: String) : UiState()
     data class Error(val message: String) : UiState()

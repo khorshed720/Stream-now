@@ -30,7 +30,9 @@ data class BroadcastStatus(
 @JsonClass(generateAdapter = true)
 data class BroadcastContentDetails(
     val boundStreamId: String? = null,
-    val monitorStream: MonitorStreamInfo? = null
+    val monitorStream: MonitorStreamInfo? = null,
+    val enableAutoStart: Boolean? = null,
+    val enableAutoStop: Boolean? = null
 )
 
 @JsonClass(generateAdapter = true)

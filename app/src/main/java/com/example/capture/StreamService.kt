@@ -18,6 +18,8 @@ import com.pedro.library.rtmp.RtmpDisplay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.delay
 
 class StreamService : Service(), ConnectChecker {
 
@@ -69,9 +71,54 @@ class StreamService : Service(), ConnectChecker {
         overlayManager.onStartClicked = {
             if (!rtmpDisplay.isStreaming) {
                 overlayManager.updateStatus("Connecting...")
-                if (rtmpDisplay.prepareVideo(1920, 1080, 60, 6000 * 1024, 0, resources.displayMetrics.densityDpi)) {
-                    // Try to prepare audio. For Android 10+ we want both if possible, but default prepareAudio does MIC
-                    if (rtmpDisplay.prepareAudio()) {
+                
+                // Determine resolution
+                val resolutionStr = ServiceLocator.resolution
+                val width = if (resolutionStr == "1080p") 1920 else if (resolutionStr == "720p") 1280 else 854
+                val height = if (resolutionStr == "1080p") 1080 else if (resolutionStr == "720p") 720 else 480
+                val bitrate = if (resolutionStr == "1080p") 6000 * 1024 else if (resolutionStr == "720p") 3500 * 1024 else 1500 * 1024
+
+                // For portrait mode streaming, we swap width and height
+                val isPortrait = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
+                val finalWidth = if (isPortrait) height else width
+                val finalHeight = if (isPortrait) width else height
+
+                if (rtmpDisplay.prepareVideo(finalWidth, finalHeight, 60, bitrate, 0, resources.displayMetrics.densityDpi)) {
+                    val audioSource = ServiceLocator.audioSource
+                    
+                    // Enable Adaptive Bitrate if supported
+                    try {
+                        val method = rtmpDisplay.javaClass.getMethod("setAdaptiveBitrate", Boolean::class.javaPrimitiveType)
+                        method.invoke(rtmpDisplay, true)
+                    } catch (e: Exception) {
+                        try {
+                            val method = rtmpDisplay.javaClass.getMethod("setAdaptiveBitrate", Boolean::class.java)
+                            method.invoke(rtmpDisplay, true)
+                        } catch (e2: Exception) {
+                            // Ignore if not present
+                        }
+                    }
+
+                    val audioPrepared = when (audioSource) {
+                        "Internal" -> {
+                            // Android 10+ internal audio requires MediaProjection
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                rtmpDisplay.prepareAudio(256 * 1024, 44100, true, true, true)
+                            } else {
+                                rtmpDisplay.prepareAudio() // Fallback to mic for older devices
+                            }
+                        }
+                        "Internal + Mic" -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                rtmpDisplay.prepareAudio(256 * 1024, 44100, true, true, true)
+                            } else {
+                                rtmpDisplay.prepareAudio()
+                            }
+                        }
+                        else -> rtmpDisplay.prepareAudio() // Mic
+                    }
+
+                    if (audioPrepared) {
                         rtmpDisplay.startStream(rtmpUrl)
                     } else {
                         overlayManager.updateStatus("Audio error")
@@ -107,9 +154,28 @@ class StreamService : Service(), ConnectChecker {
             }
         }
         
+        var bannerJob: kotlinx.coroutines.Job? = null
+
         overlayManager.onBannerToggled = { isOn ->
             isBannerActive = isOn
-            // Banner compositing logic would go here using rtmpDisplay.glInterface
+            val bytes = ServiceLocator.bannerBytes
+            bannerJob?.cancel()
+            bannerJob = null
+            if (isOn && bytes != null) {
+                bannerJob = scope.launch(Dispatchers.Main) {
+                    val intervalMillis = (ServiceLocator.bannerInterval * 1000).toLong()
+                    while (isActive) {
+                        overlayManager.showBanner(bytes)
+                        delay(5000) // Show for 5 seconds
+                        overlayManager.hideBanner()
+                        delay(intervalMillis)
+                    }
+                }
+            } else {
+                scope.launch(Dispatchers.Main) {
+                    overlayManager.hideBanner()
+                }
+            }
         }
 
         overlayManager.showOverlay()
@@ -152,7 +218,9 @@ class StreamService : Service(), ConnectChecker {
     }
 
     override fun onNewBitrate(bitrate: Long) {
-        // adaptive bitrate could be implemented here
+        if (rtmpDisplay.isStreaming) {
+            rtmpDisplay.setVideoBitrateOnFly(bitrate.toInt())
+        }
     }
 
     override fun onDisconnect() {
