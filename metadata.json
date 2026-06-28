@@ -1,0 +1,6 @@
+{
+  "name": "Streamer Controller",
+  "description": "Personal Android Gameplay Livestreaming Controller App",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

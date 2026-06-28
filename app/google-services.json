@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "521842435933",
+    "firebase_url": "https://stream-now-a9f2b-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "stream-now-a9f2b",
+    "storage_bucket": "stream-now-a9f2b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:521842435933:android:f31b6393c66e3c5687aab4",
+        "android_client_info": {
+          "package_name": "com.aistudio.rtmpstreamer.xmopq"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "521842435933-7oh0upcmo483g6929ldt1i82ft7vtc2f.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aistudio.rtmpstreamer.xmopq",
+            "certificate_hash": "cdc786ff3e2c5763412b14b026e8198743e00c70"
+          }
+        },
+        {
+          "client_id": "521842435933-cnhr6cr7p7tshmo11ji4pp9etakt86nk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBfVc1jytmyBDq2OqUhoor46s4GS2hNk7E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "521842435933-cnhr6cr7p7tshmo11ji4pp9etakt86nk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
