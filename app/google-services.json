@@ -15,11 +15,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "521842435933-7oh0upcmo483g6929ldt1i82ft7vtc2f.apps.googleusercontent.com",
+          "client_id": "521842435933-hi7si6s9s1lnjsitdjidlbq2bn2cd0ms.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.aistudio.rtmpstreamer.xmopq",
-            "certificate_hash": "cdc786ff3e2c5763412b14b026e8198743e00c70"
+            "certificate_hash": "b5bc890d5da7bf8612a1556e2eee609eba8d0940"
           }
         },
         {
