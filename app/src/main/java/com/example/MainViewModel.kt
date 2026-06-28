@@ -13,6 +13,7 @@ import com.google.android.gms.auth.GoogleAuthUtil
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
@@ -68,9 +69,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             .build()
     }
 
+    fun handleSignInFailed(exception: ApiException) {
+        val statusCode = exception.statusCode
+        val errorMessage = when (statusCode) {
+            10 -> "Sign in failed (Error 10: DEVELOPER_ERROR). Please ensure the SHA-1 fingerprint of the app's signing certificate is correctly registered in your Firebase project settings."
+            12500 -> "Sign in failed (Error 12500). Please ensure your Firebase project's support email is set in project settings."
+            else -> "Google Sign-In failed with status code: $statusCode"
+        }
+        _uiState.value = UiState.Error(errorMessage)
+    }
+
     fun handleSignInResult(account: GoogleSignInAccount?) {
         if (account == null) {
-            _uiState.value = UiState.Error("Sign in failed")
+            _uiState.value = UiState.Error("Sign in failed or was cancelled.")
             return
         }
         

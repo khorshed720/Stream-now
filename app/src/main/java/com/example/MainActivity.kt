@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
                 viewModel.handleSignInResult(account)
             } catch (e: ApiException) {
                 Log.w("MainActivity", "Google sign in failed", e)
-                viewModel.handleSignInResult(null)
+                viewModel.handleSignInFailed(e)
             }
         } else {
             Log.w("MainActivity", "Google sign in cancelled or failed. Result code: ${result.resultCode}")
