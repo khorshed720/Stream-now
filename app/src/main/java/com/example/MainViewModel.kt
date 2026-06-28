@@ -73,7 +73,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val statusCode = exception.statusCode
         val errorMessage = when (statusCode) {
             10 -> "Sign in failed (Error 10: DEVELOPER_ERROR). Please ensure the SHA-1 fingerprint of the app's signing certificate is correctly registered in your Firebase project settings."
-            12500 -> "Sign in failed (Error 12500). Please ensure your Firebase project's support email is set in project settings."
+            12500 -> "Sign in failed (Error 12500). Please ensure your Firebase project's support email is set in project settings. Make sure your google services json has the correct info."
             else -> "Google Sign-In failed with status code: $statusCode"
         }
         _uiState.value = UiState.Error(errorMessage)
@@ -81,7 +81,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun handleSignInResult(account: GoogleSignInAccount?) {
         if (account == null) {
-            _uiState.value = UiState.Error("Sign in failed or was cancelled.")
+            _uiState.value = UiState.Error("Sign in failed or was cancelled. Please check your network connection and try again.")
             return
         }
         
