@@ -29,17 +29,19 @@ jobs:
         run: |
           cp .env.example .env
 
-      - name: Build Debug APK
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: 9.3.1
-          arguments: assembleDebug assembleRelease bundleRelease
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Android APKs and App Bundle
+        run: ./gradlew assembleDebug assembleRelease bundleRelease
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: app-builds
           path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/release/app-release-unsigned.apk
-            app/build/outputs/bundle/release/app-release.aab
+            app/build/outputs/apk/**/*.apk
+            app/build/outputs/bundle/**/*.aab

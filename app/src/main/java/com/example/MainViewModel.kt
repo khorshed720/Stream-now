@@ -59,8 +59,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun getGoogleSignInOptions(): GoogleSignInOptions {
-        // We use string directly if BuildConfig is not generating properly
-        val clientId = BuildConfig.WEB_CLIENT_ID
+        // Use default_web_client_id from google-services.json
+        val clientId = getApplication<Application>().getString(R.string.default_web_client_id)
         return GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(clientId)
             .requestEmail()
